@@ -43,6 +43,7 @@ enum LEVEL{
 
 void print(int level, string to_print);
 void setLevel(int level);
+void setLogFile(string filepath);
 
 void trace(string to_print);
 void debug(string to_print);

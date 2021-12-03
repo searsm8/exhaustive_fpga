@@ -2,10 +2,25 @@
 #include <limits.h>
 
 
+Net::Net(string name_)
+{
+    name = name_;
+}
 
-Net::Net(vector<Node*> _nodes)
-{ nodes = _nodes; }
+Net::Net(string name_, vector<Node*> _nodes)
+{ 
+    name = name_;
+    nodes = _nodes; 
+}
 
+
+void Net::addNode(Node* node)
+{
+    nodes.push_back(node);
+}
+
+string Net::getName()
+{ return name; }
 
 vector<Node*> Net::getNodes()
 { return nodes; }

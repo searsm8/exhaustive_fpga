@@ -10,16 +10,12 @@ CellType::CellType(string name_)
 }
 
 string CellType::getName()
-{
-    return name;
-}
+{ return name; }
 
 vector<Pin> CellType::getPinList()
-{
-    return pins;
-}
+{ return pins; }
 
-string CellType::toString()
+string CellType::to_string()
 {
     string cell_str = "CELL" + name + ":";
     for(Pin p : pins)
@@ -29,7 +25,17 @@ string CellType::toString()
     return cell_str;
 }
 
+Resource* CellType::getResource()
+{
+    return resource;
+}
+
 void CellType::addPin(Pin new_pin)
 {
     pins.push_back(new_pin);
+}
+
+void CellType::setResource(Resource* resource_)
+{
+    resource = resource_;
 }

@@ -3,18 +3,29 @@
 namespace log
 {
 vector<string> level_string {"trace", "debug", "info", "WARNING", "ERROR", "FATAL"};
+ofstream fs;
 
 int print_level = LEVEL::INFO; // by default, print info, warnings, errors, and fatal messages
+string file_path = "./";
 
 void print(int level, string to_print)
 {
     if(level >= print_level)
+    {
         cout << "[ " << level_string[level] << " ] " << to_print << ESC_RESET << endl;
+        fs << "[ " << level_string[level] << " ] " << to_print << endl;
+    }
 }
 
 void setLevel(int level)
 {
     print_level = level;
+}
+
+void setLogFile(string filepath_)
+{
+    file_path = filepath_;
+    fs = ofstream(file_path);
 }
 
 void trace(string to_print)     { printf(ESC_BLUE); print(LEVEL::TRACE, to_print); }

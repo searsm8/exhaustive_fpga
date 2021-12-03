@@ -1,15 +1,20 @@
 #pragma once
 #include "common.h"
-#include "cell.h"
 using namespace std;
 
 class Resource
 {
     private:
-    string name;
-    vector<CellType> cell_types;
-
     public:
+    string name;
+    vector<string> cell_types;
+
+    Resource();
+    Resource(string name);
+
+    void addCellType(string cell_type);
+    string getName();
+    string to_string();
 
 
 };

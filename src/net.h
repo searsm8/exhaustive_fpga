@@ -7,12 +7,16 @@ using namespace std;
 class Net
 {
     private:
+    string name;
     vector<Node*> nodes;
 
     public:
-    Net(vector<Node*> _nodes);
+    Net(string name_);
+    Net(string name_, vector<Node*> _nodes);
 
+    void addNode(Node* node);
     vector<Node*> getNodes();
+    string getName();
 
     int computeHPWL();
 };
