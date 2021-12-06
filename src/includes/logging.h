@@ -29,7 +29,7 @@ using namespace std;
 #define ESC_BG_DEFAULT "\033[49m"
 #define ESC_OVERLINE "\033[53m"
 
-namespace log
+namespace sm8log
 {
 
 enum LEVEL{
@@ -38,12 +38,13 @@ enum LEVEL{
     INFO,
     WARNING,
     ERROR,
-    FATAL
+    FATAL,
+    OUT
 };
 
 void print(int level, string to_print);
 void setLevel(int level);
-void setLogFile(string filepath);
+void setlogFile(string filepath);
 
 void trace(string to_print);
 void debug(string to_print);
@@ -51,4 +52,5 @@ void info(string to_print);
 void warning(string to_print);
 void error(string to_print);
 void fatal(string to_print);
-} //end namespace logging
+void out(string to_print);
+} //end namespace sm8logging

@@ -4,10 +4,10 @@
 class SiteType
 {
     private:
+    public:
     string name;
     map<string, int> site_resource_counts; 
 
-    public:
     SiteType();
     SiteType(string name_);
 

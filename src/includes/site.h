@@ -19,5 +19,5 @@ class Site
     Site(Coord coord_, SiteType* type_);
     
     bool placeNode(Node* node, string resource_to_use);
-    void removeNode(Node* node);
+    bool removeNode(Node* node);
 };

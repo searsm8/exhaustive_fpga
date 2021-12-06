@@ -8,6 +8,8 @@ using namespace bookshelf;
 class Placer
 {
     private:
+    bookshelf::DesignFiles design_files;
+    Coord layout_size;
     CellLibrary cell_lib;
     ResourceLibrary resource_lib;
     ResourceMap resource_map;
@@ -22,4 +24,9 @@ class Placer
     public:
     Placer(string aux_filepath);
 
+    void placeNodeRandomly(Node* n);
+    Placement makeRandomPlacement();
+
+    int computeTotalHPWL();
+    void clearSites();
 };

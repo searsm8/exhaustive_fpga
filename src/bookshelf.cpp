@@ -8,16 +8,17 @@ namespace bookshelf {
 string parseExtension(string filename)
 { return filename.substr(filename.find('.')); }
 
-FileParser::FileParser(string filepath)
+FileParser::FileParser(string filepath_)
 {
-    log::trace("Begin parsing file: " + filepath);
+    filepath = filepath_;
+    sm8log::trace("Begin parsing file: " + filepath);
     fs = ifstream(filepath);
-    if(!fs.good()) log::error("CANNOT OPEN FILE!");
+    if(!fs.good()) sm8log::error("CANNOT OPEN FILE!");
 }
 
 FileParser::~FileParser()
 {
-    log::trace("Finished parsing file!");
+    sm8log::trace("Finished parsing file: " + filepath);
     fs.close();
 }
 
@@ -38,12 +39,15 @@ bool FileParser::parseNextLine(vector<string> &tokens)
     return !tokens.empty();
 }
 
+DesignFiles::DesignFiles()
+{}
+
 DesignFiles::DesignFiles(string aux_filepath_)
 {
     aux_filepath = aux_filepath_;
 
     design_filepath = aux_filepath.substr(0, aux_filepath.find_last_of('/')+1);
-    log::info("Reading design from: " + design_filepath);
+    sm8log::info("Reading design from: " + design_filepath);
 
     read_aux_file();
 
@@ -60,7 +64,7 @@ DesignFiles::DesignFiles(string aux_filepath_)
             scl_filename = filename;
         else if(extension == ".pl")
             pl_filename = filename;
-        else log::warning("Invalid file extension: " + filename);
+        else sm8log::warning("Invalid file extension: " + filename);
     }
 }
 
@@ -94,12 +98,12 @@ void DesignFiles::read_lib_file(CellLibrary &cell_lib)
     }
 
     // Display info on the library
-    log::info("***CELL LIBRARY***");
+    sm8log::info("***CELL LIBRARY***");
     for(auto it = cell_lib.begin(); it != cell_lib.end(); it++)
-        log::info(it->first + ": Pin count: " + to_string(it->second.getPinList().size()));
+        sm8log::info(it->first + ": Pin count: " + to_string(it->second.getPinList().size()));
 }
 
-void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map)
+void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map, Coord &layout_size)
 {
     FileParser parser(design_filepath + scl_filename);
     vector<string> tokens;
@@ -159,24 +163,26 @@ void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource
         }
         else if(tokens[0] == "SITEMAP")
         {
+            layout_size.first  = stoi(tokens[1]);
+            layout_size.second = stoi(tokens[2]);
             mode = 3; // set flag for new site type
         }
     }
 
     // display summaries of scl file
-    log::info("***RESOURCES SUMMARY***");
+    sm8log::info("***RESOURCES SUMMARY***");
     for(auto it = resource_lib.begin(); it != resource_lib.end(); it++)
-        log::info(it->second.to_string());
+        sm8log::info(it->second.to_string());
 
-    log::info("***CELL RESOURCES***");
+    sm8log::info("***CELL RESOURCES***");
     for(auto it = resource_map.begin(); it != resource_map.end(); it++)
-        log::info(it->first + ": " + it->second);
-        //log::info(it->first + ": " + it->second.getResource()->getName());
+        sm8log::info(it->first + ": " + it->second);
+        //sm8log::info(it->first + ": " + it->second.getResource()->getName());
 
-    log::info("***SITEMAP SUMMARY***");
-    log::info("Number of Sites: " + to_string(site_map.size()));
+    sm8log::info("***SITEMAP SUMMARY***");
+    sm8log::info("Number of Sites: " + to_string(site_map.size()));
     for(auto it = site_counts.begin(); it != site_counts.end(); it++)
-        log::info("Number of " + it->first + " Sites: " + to_string(it->second));
+        sm8log::info("Number of " + it->first + " Sites: " + to_string(it->second));
 }
 
 void DesignFiles::read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib)
@@ -198,10 +204,10 @@ void DesignFiles::read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLi
     }
 
     //display info on the Node list
-    log::info("***NODE LIST SUMMARY***");
-    log::info("Node count: " + to_string(node_list.size()));
+    sm8log::info("***NODE LIST SUMMARY***");
+    sm8log::info("Node count: " + to_string(node_list.size()));
     for(auto it = node_type_counts.begin(); it != node_type_counts.end(); it++)
-        log::info(it->first->getName()+ ": " + to_string(it->second) + " instances");
+        sm8log::info(it->first->getName()+ ": " + to_string(it->second) + " instances");
 }
 
 void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const NodeMap &node_map, ResourceMap &resource_map)
@@ -221,7 +227,7 @@ void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const N
         {
             Node* np = node_map.at(name);
             if(!np) {
-                log::error("Node in pl file does not exist: " + np->getName());
+                sm8log::error("Node in pl file does not exist: " + np->getName());
                 continue;
             }
             np->setCoord(fixed_coord);
@@ -233,8 +239,8 @@ void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const N
     }
     
     // print info about the fixed nodes
-    log::info("***FIXED NODES SUMMARY***");
-    log::info("Design total fixed node count: " + to_string(fixed_nodes.size()));
+    sm8log::info("***FIXED NODES SUMMARY***");
+    sm8log::info("Design total fixed node count: " + to_string(fixed_nodes.size()));
 }
 
 void DesignFiles::read_nets_file(NetList &net_list, NodeMap &node_map)
@@ -257,17 +263,35 @@ void DesignFiles::read_nets_file(NetList &net_list, NodeMap &node_map)
                 Node* n = node_map[inst_name];
                 if(n)
                     net->addNode(n);
-                else log::warning("Node does exist:" + inst_name + " " + to_string(tokens[0].size()));
+                else sm8log::warning("Node does exist:" + inst_name + " " + to_string(tokens[0].size()));
             }
             net_list.push_back(net);
         }
     }
 
     // print info about the netlist
-    log::info("***NETLIST SUMMARY***");
+    sm8log::info("***NETLIST SUMMARY***");
     //for(auto it = net_list.begin(); it != net_list.end(); it++)
-    //    log::info((*it)->getName());
-    log::info("Number of nets: " + to_string(net_list.size()));
+    //    sm8log::info((*it)->getName());
+    sm8log::info("Number of nets: " + to_string(net_list.size()));
 }
+
+void DesignFiles::write_pl_file(string filepath, Placement &p)
+{
+    sm8log::trace("Begin writing file: " + filepath);
+    ofstream ofs(filepath);
+    for(auto it = p.begin(); it != p.end(); it++)
+    {
+        Node* n = it->first;
+        Coord c = it->second;
+        string fixed_str = "";
+        if(n->isFixed())
+            fixed_str = " FIXED";
+        ofs << n->getName() << " " << c.first << " " << c.second << " " << n->getResourceNum() << fixed_str << endl;
+    }
+    sm8log::trace("Finished writing file: " + filepath);
+    ofs.close();
+}
+
 
 } //end bookshelf

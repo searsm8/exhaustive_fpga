@@ -8,8 +8,10 @@ using namespace std;
 #include <cstring>
 #include <unordered_map>
 #include <map>
+#include <random>
+#include <ctime>
 
 typedef pair<int, int> Coord;
 
 #include "logging.h"
-
+#include "utils.h"

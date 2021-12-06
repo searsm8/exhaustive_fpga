@@ -27,10 +27,11 @@ string parseExtension(string filename);
 class FileParser
 {
     private: 
-    ifstream fs;
+    string filepath;
+    ifstream fs;  // reads design files
 
     public:
-    FileParser(string filepath);
+    FileParser(string filepath_);
     ~FileParser();
     bool parseNextLine(vector<string> &tokens);
 };
@@ -47,14 +48,18 @@ class DesignFiles
     string pl_filename;
     string nets_filename;
 
+    DesignFiles();
     DesignFiles(string aux_filepath_);
 
     void read_aux_file();
     void read_lib_file(CellLibrary &cell_lib);
-    void read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map);
+    void read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map, Coord &layout_size);
     void read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib);
     void read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const NodeMap &node_map, ResourceMap &resource_map);
     void read_nets_file(NetList &net_list, NodeMap &node_map);
+
+    void write_pl_file(string filepath, Placement &p);
+    
 };
 
 } //end bookshelf
