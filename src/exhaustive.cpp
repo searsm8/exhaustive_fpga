@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     boost::filesystem::create_directory(design_filepath + "/outputs");
     string log_file = design_filepath + "/outputs/out.log";
 
-    sm8log::setLevel(sm8log::INFO);
+    sm8log::setLevel(sm8log::DEBUG);
     sm8log::setlogFile(log_file);
     sm8log::out("------------------------------");
     sm8log::out("BEGIN FPGA EXHAUSTIVE SEARCH");
@@ -27,7 +27,6 @@ int main(int argc, char** argv)
 
     sm8log::out("------------------------------");
     sm8log::out("FINISHED FPGA EXHAUSTIVE SEARCH");
-    sm8log::out("------------------------------");
     sm8log::out("log file located at: " + log_file);
     return 0;
 }

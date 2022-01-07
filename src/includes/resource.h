@@ -8,6 +8,7 @@ class Resource
     public:
     string name;
     vector<string> cell_types;
+    int count; // how many of this resource type exist in the design
 
     Resource();
     Resource(string name);

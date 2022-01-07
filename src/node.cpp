@@ -52,3 +52,4 @@ void Node::setResourceNum(int num)
 
 void Node::setFixed(bool fixed_)
 { fixed = fixed_; }
+

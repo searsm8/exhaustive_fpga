@@ -43,7 +43,7 @@ bool Site::placeNode(Node* np, string resource_to_use)
             );
         return false;
     } else {
-        used_resource_counts[resource_to_use]++;
+        np->setResourceNum(used_resource_counts[resource_to_use]++);
         placed_nodes.push_back(np);
         return true;
     }

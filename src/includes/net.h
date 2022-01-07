@@ -9,6 +9,8 @@ class Net
     private:
     string name;
     vector<Node*> nodes;
+    int x_bound;
+    int y_bound;
 
     public:
     Net(string name_);
@@ -18,5 +20,11 @@ class Net
     vector<Node*> getNodes();
     string getName();
 
-    int computeHPWL();
+    int updateXBound();
+    int updateYBound();
+    int updateHPWL();
+
+    int getXBound();
+    int getYBound();
+    int getHPWL();
 };

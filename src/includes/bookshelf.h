@@ -14,12 +14,13 @@ namespace bookshelf {
 // Typedefs to hold the design information read from the design files
 typedef map<string, CellType> CellLibrary;
 typedef map<string, Resource> ResourceLibrary;
-typedef map<string, string> ResourceMap;
+typedef map<string, string> ResourceMap; // maps a CellType to a Resource type
 typedef map<string, SiteType> SiteLibrary;
 typedef map<Coord, Site> SiteMap;
 typedef vector<Net*> NetList;
 typedef vector<Node*> NodeList;
 typedef map<string, Node*> NodeMap;
+typedef map<string, int> CountMap;
 typedef map<Node*, Coord> Placement;
 
 string parseExtension(string filename);
@@ -53,10 +54,11 @@ class DesignFiles
 
     void read_aux_file();
     void read_lib_file(CellLibrary &cell_lib);
-    void read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map, Coord &layout_size);
-    void read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib);
+    void read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, 
+                        ResourceMap &resource_map, Coord &layout_size, CountMap &site_counts, Coord &slice_coord_max);
+    void read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib, CountMap &node_type_counts);
     void read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const NodeMap &node_map, ResourceMap &resource_map);
-    void read_nets_file(NetList &net_list, NodeMap &node_map);
+    void read_nets_file(NetList &net_list, NodeMap &node_map, map<Node*, NetList> &node_to_net_list);
 
     void write_pl_file(string filepath, Placement &p);
     

@@ -47,7 +47,7 @@ DesignFiles::DesignFiles(string aux_filepath_)
     aux_filepath = aux_filepath_;
 
     design_filepath = aux_filepath.substr(0, aux_filepath.find_last_of('/')+1);
-    sm8log::info("Reading design from: " + design_filepath);
+    sm8log::out("Reading design from: " + design_filepath);
 
     read_aux_file();
 
@@ -103,12 +103,12 @@ void DesignFiles::read_lib_file(CellLibrary &cell_lib)
         sm8log::info(it->first + ": Pin count: " + to_string(it->second.getPinList().size()));
 }
 
-void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map, Coord &layout_size)
+void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource_lib, SiteMap &site_map, ResourceMap &resource_map, Coord &layout_size, CountMap &site_counts, Coord &slice_coord_max)
 {
+    sm8log::info("Including only slices less than (" + to_string(slice_coord_max.first) + ", " + to_string(slice_coord_max.second) + ")");
     FileParser parser(design_filepath + scl_filename);
     vector<string> tokens;
     SiteType* new_sitetype;
-    map<string, int> site_counts;
     int mode = 0;
     while(parser.parseNextLine(tokens))
     {
@@ -142,14 +142,17 @@ void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource
                 mode = 0;
             else // read in a site for the site map
             {
-                // TODO: update for new SiteMap 
                 Coord site_coord = make_pair(stoi(tokens[0]), stoi(tokens[1]));
                 Site site(site_coord, &site_lib[tokens[2]]);
-                site_map[site_coord] = site;
-                if(site_counts[site.type->getName()])
-                    site_counts[site.type->getName()]++;
-                else 
-                    site_counts[site.type->getName()] = 1;
+                if(site.type->getName() != "SLICE" || (site_coord.first < slice_coord_max.first && site_coord.second < slice_coord_max.second)) {
+                    site_map[site_coord] = site;
+                    if(site_counts[site.type->getName()])
+                        site_counts[site.type->getName()]++;
+                    else 
+                        site_counts[site.type->getName()] = 1;
+                }
+                //else 
+                    //sm8log::debug("SLICE REJECTED at (" + to_string(site_coord.first) + ", " + to_string(site_coord.second) + ")");
             }
         }
         else if(tokens[0] == "SITE")
@@ -185,29 +188,29 @@ void DesignFiles::read_scl_file(SiteLibrary &site_lib, ResourceLibrary &resource
         sm8log::info("Number of " + it->first + " Sites: " + to_string(it->second));
 }
 
-void DesignFiles::read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib)
+void DesignFiles::read_nodes_file(NodeList &node_list, NodeMap &node_map, CellLibrary &cell_lib, CountMap &node_type_counts)
 {
     FileParser parser(design_filepath + nodes_filename);
     vector<string> tokens;
-    map<CellType*, int> node_type_counts;
     while(parser.parseNextLine(tokens))
     {
-        string name = tokens[0];
+        string node_name = tokens[0];
         CellType* type = &cell_lib.at(tokens[1]);
-        Node* n = new Node(name, type);
+        string type_name = type->getName();
+        Node* n = new Node(node_name, type);
         node_list.push_back(n);
-        node_map[name] = n;
-        if(node_type_counts[type])
-            node_type_counts[type]++;
+        node_map[node_name] = n;
+        if(node_type_counts[type_name])
+            node_type_counts[type_name]++;
         else 
-            node_type_counts[type] = 1;
+            node_type_counts[type_name] = 1;
     }
 
     //display info on the Node list
     sm8log::info("***NODE LIST SUMMARY***");
     sm8log::info("Node count: " + to_string(node_list.size()));
     for(auto it = node_type_counts.begin(); it != node_type_counts.end(); it++)
-        sm8log::info(it->first->getName()+ ": " + to_string(it->second) + " instances");
+        sm8log::info(it->first + ": " + to_string(it->second) + " instances");
 }
 
 void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const NodeMap &node_map, ResourceMap &resource_map)
@@ -223,19 +226,17 @@ void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const N
         if(tokens.size() > 4)
             if(tokens[4] == "FIXED")
                 fixed = true;
-        if(fixed)
-        {
-            Node* np = node_map.at(name);
-            if(!np) {
-                sm8log::error("Node in pl file does not exist: " + np->getName());
-                continue;
-            }
-            np->setCoord(fixed_coord);
-            np->setFixed(fixed);
-            fixed_nodes.push_back(np);
-            string res = resource_map.at(np->getType()->getName());
-            site_map[fixed_coord].placeNode(np, res);
+        Node* np = node_map.at(name);
+        if(!np) {
+            sm8log::error("Node in pl file does not exist: " + np->getName());
+            continue;
         }
+        np->setCoord(fixed_coord);
+        np->setFixed(fixed);
+        if(fixed)
+            fixed_nodes.push_back(np);
+        string res = resource_map.at(np->getType()->getName());
+        site_map[fixed_coord].placeNode(np, res);
     }
     
     // print info about the fixed nodes
@@ -243,7 +244,7 @@ void DesignFiles::read_pl_file(SiteMap &site_map, NodeList &fixed_nodes, const N
     sm8log::info("Design total fixed node count: " + to_string(fixed_nodes.size()));
 }
 
-void DesignFiles::read_nets_file(NetList &net_list, NodeMap &node_map)
+void DesignFiles::read_nets_file(NetList &net_list, NodeMap &node_map, map<Node*, NetList> &node_to_net_list)
 {
     FileParser parser(design_filepath + nets_filename);
     vector<string> tokens;
@@ -260,9 +261,12 @@ void DesignFiles::read_nets_file(NetList &net_list, NodeMap &node_map)
             {
                 parser.parseNextLine(tokens);
                 string inst_name = tokens[0].substr(1);
-                Node* n = node_map[inst_name];
-                if(n)
-                    net->addNode(n);
+                Node* np = node_map[inst_name];
+                if(np)
+                {
+                    net->addNode(np);
+                    node_to_net_list[np].push_back(net);
+                }
                 else sm8log::warning("Node does exist:" + inst_name + " " + to_string(tokens[0].size()));
             }
             net_list.push_back(net);
