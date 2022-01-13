@@ -77,75 +77,38 @@ Placer::Placer(string aux_filepath)
  */
 int count = 0;
 int placements_evaluated = 0;
-void Placer::exhaustiveNodePlacement(int node_num, int site_index)
+void Placer::exhaustiveNodePlacement(int node_index, int site_index_start)
 {
-    cout << "node_num: " << node_num << "\t" << "site_index: " << site_index << endl;
-    cout << "Recursive count: " << ++count << endl;
-    if(count > 9999){
-        sm8log::debug("count RETURN");
-        return;
-    }
 
-    // end criteria: reached final position of the final node
-    // exhaustive search is complete!
-    if(node_num >= node_list.size()) {
-        sm8log::debug("node_num RETURN");
+    //end criteria
+    if(node_index >= node_list.size()) {
+        cout << "LAST NODE: evaluating..." << ++placements_evaluated << " placements evaluated" << endl;
         count--;
         return;
     }
 
-    Node* np = node_list[node_num];
+    Node* np = node_list[node_index];
+
+    if(np->isFixed()) {
+       // cout << node_index << ": " << np->getName() << " is Fixed! Skipping..." << endl;
+        exhaustiveNodePlacement(node_index+1, 0);
+        count--;
+        return;
+    }
+    cout << node_index << ": " << np->getName() << " computing." << endl;
     SiteType* stp = np->getSiteType();
-    //cout << "site_list.size(): " << stp->site_list.size() << endl;
-    //TODO: What happens when site_index is too big? exit...
-    if(site_index >= stp->site_list.size()) {
-        sm8log::debug("site_index RETURN");
-        count--;
-        return;
+    cout << "Recursive Count: " << ++count << endl;
+
+    for(int site_index = site_index_start; site_index < stp->site_list.size(); site_index++)
+    {
+        //cout << node_index << ": " << stp->name << " @ site: " << site_index << endl;;
+        Site* site = stp->site_list[site_index];
+        //cout << "Trying " << np->getName() << ":" << np->getResource()->name << " in Site " << site->type->name << " (" << site->coord.first << ", " << site->coord.second << ")" << endl;
+        exhaustiveNodePlacement(node_index+1, 0);
     }
-    Site* site = stp->site_list[site_index];
-    Coord site_coord = site->coord;
-    Resource* res = np->getResource();
 
-    if(node_num == node_list.size()-1)
-        sm8log::debug("LAST NODE Node " + to_string(node_num) + " " + np->getName() + " (" + to_string(site->coord.first) + ", " + to_string(site->coord.second) + ")");
-    //seg fault?
-    sm8log::debug("Node " + to_string(node_num) + " " + np->getName() + " Site: " + stp->name + " @ (" + to_string(site->coord.first) + ", " + to_string(site->coord.second) + ")");
-
-    // recursively call this function until node_num limit is reached
-
-    //if cannot place a node at this coordinate, increment
-    if(!np->isFixed())
-    while(!site->placeNode(np, res->name)) {
-        if(node_num == node_list.size()-1) {
-            //incrementCoord(site_coord, slice_coord_max);
-        }
-        site = stp->site_list[++site_index];
-        //sm8log::debug("LEGALIZING Node " + to_string(node_num) + " " + np->getName() + " (" + to_string(site->coord.first) + ", " + to_string(site->coord.second) + ")");
-    }
-    sm8log::debug("GOOD SITE FOUND: Node " + to_string(node_num) + " " + np->getName() + " Site: " + stp->name + " @ (" + to_string(site->coord.first) + ", " + to_string(site->coord.second) + ")");
-
-    if(node_num == node_list.size()-1) {
-        sm8log::debug("HERE IS WHERE WE ACTUALLY EVALUATE A PLACEMENT");
-        sm8log::debug("Placements Evaluated: " + to_string(++placements_evaluated));
-        //evaluatePlacement();
-    } else {
-        exhaustiveNodePlacement(node_num+1, 0);
-    }
-    if(!np->isFixed())
-        exhaustiveNodePlacement(node_num, site_index+1);
-    else cout << np->getName() << " " << np->getSite()->type->name << " is Fixed! Not moving it..." << endl;
-
-    NetList modified_list;
-
-    //cout << np->getName() << " : " << node_to_net_list[np->getName()].size() <<  endl;
-    //for(auto it = node_to_net_list[np].begin(); it != node_to_net_list[np].end(); it++) {
-    //for(Net* net : node_to_net_list[np->getName()])
-    //    modified_list.push_back(net);
-    
-    //total_xy_wl = updateHPWL(modified_list);
-    //modified_list.clear();
     count--;
+
 }
 
 /*
