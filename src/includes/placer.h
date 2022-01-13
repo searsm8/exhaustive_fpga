@@ -10,6 +10,7 @@ class Placer
     private:
     bookshelf::DesignFiles design_files;
     Coord layout_size;
+    Coord slice_coord_max;
     CellLibrary cell_lib;
     ResourceLibrary resource_lib;
     ResourceMap resource_map;
@@ -22,7 +23,7 @@ class Placer
     CountMap site_counts;
     CountMap node_type_counts;
     vector<Placement> best_placements;
-    map<Node*, NetList> node_to_net_list;
+    NetListMap node_to_net_list;
 
     unsigned long total_x_wl;
     unsigned long total_y_wl;
@@ -31,8 +32,8 @@ class Placer
     public:
     Placer(string aux_filepath);
 
-    void placeNodeInNextCoord(Node* np);
-    Coord getNextValidCoord(Node* np);
+    void exhaustiveNodePlacement(int node_num, int site_index);
+    void incrementCoord(Coord &c, Coord &max);
     void placeNodeRandomly(Node* np, NetList &modified_list);
     Placement makeRandomPlacement();
 

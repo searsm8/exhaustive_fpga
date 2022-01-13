@@ -8,14 +8,7 @@ Node::Node(string name_, CellType* type_)
     coord = make_pair(0, 0);
     resource_num = 0;
     fixed = false;
-}
-Node::Node(string name_, CellType* type_, Coord coord_)
-{
-    name = name_;
-    type = type_;
-    coord = coord_;
-    resource_num = 0;
-    fixed = false;
+    site = NULL;
 }
 
 //accessors
@@ -24,6 +17,19 @@ string Node::getName()
 
 CellType* Node::getType()
 { return type; }
+
+Site* Node::getSite()
+{ return site; }
+
+Resource* Node::getResource()
+{
+    return getType()->getResource();
+}
+
+SiteType* Node::getSiteType()
+{
+    return getResource()->site_type;
+}
 
 Coord Node::getCoord()
 { return coord; }
@@ -46,6 +52,9 @@ bool Node::setCoord(Coord new_coord)
         return true;
     }
 }
+
+void Node::setSite(Site* site_)
+{ site = site_;}
 
 void Node::setResourceNum(int num)
 { resource_num = num; }

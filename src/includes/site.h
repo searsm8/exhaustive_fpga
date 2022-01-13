@@ -14,6 +14,7 @@ class Site
     SiteType* type;
     map<string, int> used_resource_counts;
     vector<Node*> placed_nodes;
+    int index;
 
     Site();
     Site(Coord coord_, SiteType* type_);

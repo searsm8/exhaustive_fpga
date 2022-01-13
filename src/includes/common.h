@@ -11,7 +11,7 @@ using namespace std;
 #include <random>
 #include <ctime>
 
-typedef pair<int, int> Coord;
-
 #include "logging.h"
 #include "utils.h"
+
+typedef pair<int, int> Coord;

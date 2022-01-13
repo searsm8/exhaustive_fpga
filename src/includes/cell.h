@@ -6,6 +6,8 @@
 // A class to represent a cell in the placement.
 using namespace std;
 
+class SiteType;
+
 class CellType
 {
     private:
