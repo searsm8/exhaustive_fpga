@@ -1,10 +1,12 @@
 #include "placer.h"
 #include <thread>
+#include <boost/thread/thread.hpp>
 
 Placer::Placer(string aux_filepath)
 {
     srand(time(nullptr));
     // Read in all the design files
+    //slice_coord_max = Coord(42, 120);
     slice_coord_max = Coord(168, 480);
     design_files = bookshelf::DesignFiles(aux_filepath);
     design_files.read_lib_file(cell_lib);
@@ -13,13 +15,22 @@ Placer::Placer(string aux_filepath)
     design_files.read_pl_file(site_map, fixed_nodes, node_map, resource_map);
     design_files.read_nets_file(net_list, node_map, node_to_net_list);
 
+    //move all fixed nodes to the front of the node_list
+    for(auto it = node_list.begin(); it != node_list.end(); it++) {
+        if((*it)->isFixed()) {
+            Node* np = (*it);
+            node_list.erase(it);
+            node_list.insert(node_list.begin(), np);
+        }
+    }
+
     // update the CellTypes in cell_lib to point to the correct SiteType which can accept them
     for(auto it = cell_lib.begin(); it != cell_lib.end(); it++) {
         string res_name = resource_map[it->second.getName()];
-        cout << "CellType name: " << it->second.getName() << "\t";
+        //cout << "CellType name: " << it->second.getName() << "\t";
         Resource* res = &resource_lib[res_name];
         it->second.setResource(res);
-        cout << "Resource name: " << it->second.getResource()->getName() << endl;
+        //cout << "Resource name: " << it->second.getResource()->getName() << endl;
     }
 
     // update Resources with the corresponding SiteType
@@ -31,84 +42,126 @@ Placer::Placer(string aux_filepath)
                 break;
             }
         }
-        cout << "Resource name: " << it->second.getName() << "\t";
-        cout << "SiteType name: " << it->second.site_type->getName() << endl;
-    }
-
-    //print SiteTypes
-    for(auto it = site_lib.begin(); it != site_lib.end(); it++) {
-        cout << "SiteType: " << it->second.getName() << " has " <<  it->second.site_list.size() << " sites." << endl;
-    }
-
-    //print Site coords
-    for(auto it = site_map.begin(); it != site_map.end(); it++) {
-        Site* sp = it->second;
-        cout << "Site @ (" << it->first.first << ", " << it->first.second << ") is of type " << sp->type->name << " index=" << sp->index << endl;
-        if(it->first.first > 0)
-        break;
+        //cout << "Resource name: " << it->second.getName() << "\t";
+        //cout << "SiteType name: " << it->second.site_type->getName() << endl;
     }
 
     total_x_wl = 0;
     total_y_wl = 0;
     total_xy_wl = 0;
+    placements_evaluated = 0;
 
     //for(auto it = resource_lib.begin(); it != resource_lib.end(); it++) {
     //        computeNumPossiblePlacements(&it->second);
     //}
 
     //sm8log::info("(X, Y) Wirelength: (" + to_string(x_wl) + ", " + to_string(y_wl) + ") = " + to_string(hpwl));
-    //clearSites();
+    clearSites();
     //std::thread th(&Placer::makeRandomPlacement, this);
     //th.join(); // wait for the thread to finish
 
     // compute the HPWL for the initial placement
     total_xy_wl = updateHPWL(net_list);
 
-    clearSites();
-    sm8log::debug("****Begin exhaustiveNodePlacement()");
-    exhaustiveNodePlacement(0, 0);
-    sm8log::debug("****Finished exhaustiveNodePlacement()");
 }
+
+
 
 /*
  * Primary driver for exhaustive search.
  * Recursive function.
  * node_num tracks which node to move. Any nodes previous to node_num should be locked.
  */
-int count = 0;
-int placements_evaluated = 0;
-void Placer::exhaustiveNodePlacement(int node_index, int site_index_start)
+int recur_count = 0;
+unsigned long long total_placements_evaluated = 0;
+int progress = 0;
+long best_HPWL = numeric_limits<long>::max();
+vector<thread*> threads;
+bool started = false;
+void Placer::exhaustiveNodePlacement(int node_index)
 {
+    recur_count++;
 
     //end criteria
     if(node_index >= node_list.size()) {
-        cout << "LAST NODE: evaluating..." << ++placements_evaluated << " placements evaluated" << endl;
-        count--;
+        //cout << "LAST NODE: evaluating..." << " HPWL = " << total_xy_wl << "\t" << ++placements_evaluated 
+        //    << " placements evaluated" << " : Progress " << progress << "/" << node_list[0]->getSiteType()->site_list.size() << endl;
+        //if HPWL is good enough, put in top 100 best placements
+        placements_evaluated++; 
+        total_placements_evaluated++; 
+        if(total_xy_wl < best_HPWL)
+            best_HPWL = total_xy_wl;
+        recur_count--;
         return;
     }
 
     Node* np = node_list[node_index];
 
     if(np->isFixed()) {
-       // cout << node_index << ": " << np->getName() << " is Fixed! Skipping..." << endl;
-        exhaustiveNodePlacement(node_index+1, 0);
-        count--;
+        //cout << node_index << ": " << np->getName() << " is Fixed! Skipping..." << endl;
+        exhaustiveNodePlacement(node_index+1);
+        recur_count--;
         return;
     }
-    cout << node_index << ": " << np->getName() << " computing." << endl;
+    //cout << node_index << ": " << np->getName() << " computing." << endl;
     SiteType* stp = np->getSiteType();
-    cout << "Recursive Count: " << ++count << endl;
+    //cout << "Recursive Count: " << recur_count << endl;
 
-    for(int site_index = site_index_start; site_index < stp->site_list.size(); site_index++)
+    for(int site_index = 0; site_index < stp->site_list.size(); site_index++)
     {
-        //cout << node_index << ": " << stp->name << " @ site: " << site_index << endl;;
+        //cout << node_index << ": " << stp->name << " @ site: " << site_index << endl;
         Site* site = stp->site_list[site_index];
+        if(!site->placeNode(np, np->getResource()->name)) {
+            //cout << "ILLEGAL NODE PLACEMENT: " << site->coord.first << ", " << site->coord.second << endl;
+            continue;
+        }
+
+        if(node_index == node_list.size()-2) {
+            progress++;
+            cout << "Thread: " << hex << this_thread::get_id() << " | " << dec << np->getName() << " updated:"<< " HPWL = " << total_xy_wl << "\t | " 
+                << " placements evaluated: " << placements_evaluated  << " | Progress " << progress << "/" << node_list[node_list.size()-2]->getSiteType()->site_list.size()
+                << "\tBest HPWL: " << best_HPWL << " total_placements: " << total_placements_evaluated << endl;
+        }
+
+        // after placing this node in a new site, update all net's HPWL that this node is on
+        // get all nets that this node np is on
+        NetList modified_list;
+        for(Net* net : node_to_net_list[np->getName()])
+            modified_list.push_back(net);
+        total_xy_wl = updateHPWL(modified_list);
+        modified_list.clear();
+
         //cout << "Trying " << np->getName() << ":" << np->getResource()->name << " in Site " << site->type->name << " (" << site->coord.first << ", " << site->coord.second << ")" << endl;
-        exhaustiveNodePlacement(node_index+1, 0);
+        //if(!started && node_index == node_list.size()-2) {
+        if(false) {
+            Placer thread_placer = *this; //copy constructor
+            Placer thread_placer2 = *this; //copy constructor
+            
+            //thread thr(&Placer::exhaustiveNodePlacement, this, node_index+1);
+            //std::thread thr( [&] { this->exhaustiveNodePlacement(node_index+1); });
+            // add a new thread
+            //threads.push_back( boost::thread([&] { this->exhaustiveNodePlacement(node_index+1); }) );
+            //thread* new_thread = new thread([&] { thread_placer.exhaustiveNodePlacement(node_index+1); }) ;
+            thread* new_thread = new thread(&Placer::exhaustiveNodePlacement, &thread_placer, node_index+1);
+            thread* new_thread2 = new thread(&Placer::exhaustiveNodePlacement, &thread_placer2, node_index+1);
+            cout << "STARTED THREAD " << new_thread->get_id() << endl;
+            threads.push_back(new_thread);
+            threads.push_back(new_thread2);
+            //if(threads.size() > 3)
+                for(auto t : threads) {
+                    auto id = t->get_id();
+                    cout << "WAITING TO FINISH THREAD " << id << endl;
+                    t->join();
+                    cout << "FINISHED THREAD " << id << endl << endl;
+                }
+            started = true;
+            //exhaustiveNodePlacement(node_index+1);
+        } else {
+            exhaustiveNodePlacement(node_index+1);
+        }
     }
 
-    count--;
-
+    recur_count--;
 }
 
 /*
@@ -200,13 +253,25 @@ unsigned long Placer::updateHPWL(NetList nets_to_update)
     return total_xy_wl;
 }
 
+unsigned long Placer::updateHPWL()
+{
+    return updateHPWL(net_list);
+}
+
 void Placer::clearSites()
 {
     // Remove all nodes from sites
-    for(auto it = site_map.begin(); it != site_map.end(); it++)
-    {
+    for(auto it = site_map.begin(); it != site_map.end(); it++) {
         it->second->placed_nodes.clear();
         it->second->used_resource_counts.clear();
+    }
+
+    for(auto it = node_list.begin(); it != node_list.end(); it++) {
+        Node* np = *it;
+        if(!np->isFixed()) {
+            np->setSite(nullptr);
+            np->setResourceNum(0);
+        }
     }
 
 }

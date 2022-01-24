@@ -8,6 +8,7 @@ using namespace bookshelf;
 class Placer
 {
     private:
+    public:
     bookshelf::DesignFiles design_files;
     Coord layout_size;
     Coord slice_coord_max;
@@ -25,14 +26,14 @@ class Placer
     vector<Placement> best_placements;
     NetListMap node_to_net_list;
 
+    unsigned long placements_evaluated;
     unsigned long total_x_wl;
     unsigned long total_y_wl;
     unsigned long total_xy_wl;
 
-    public:
     Placer(string aux_filepath);
 
-    void exhaustiveNodePlacement(int node_num, int site_index);
+    void exhaustiveNodePlacement(int node_num);
     void incrementCoord(Coord &c, Coord &max);
     void placeNodeRandomly(Node* np, NetList &modified_list);
     Placement makeRandomPlacement();
@@ -40,6 +41,7 @@ class Placer
     unsigned long updateXWirelength(NetList nets_to_update);
     unsigned long updateYWirelength(NetList nets_to_update);
     unsigned long updateHPWL(NetList nets_to_update);
+    unsigned long updateHPWL();
     void clearSites();
     void computeNumPossiblePlacements(Resource* resource);
     int getNumValidSites(Resource* resource);

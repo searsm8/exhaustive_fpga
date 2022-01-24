@@ -34,37 +34,40 @@ Site::Site(Coord coord_, SiteType* type_)
     type = type_;
 }
 
-bool Site::placeNode(Node* np, string resource_to_use)
+bool Site::placeNode(Node* np, string res_name)
 {
+    //cout << "Placing Node " << np->getName() << " at (" << coord.first << ", " << coord.second << ")" << endl;
     // if this site does not have the right kind of resource, unable to place node, return false.
-    if(type->site_resource_counts.find(resource_to_use) == type->site_resource_counts.end())
-    {
-        //sm8log::warning("Resource type " + resource_to_use + " is not in this site type!");
-        return false;
-    }
+    // NOT NECESSARY since only correct sites are used.
+    //if(type->site_resource_counts.find(res_name) == type->site_resource_counts.end())
+    //{
+    //    sm8log::warning("Resource type " + res_name+ " is not in this site type!");
+    //    return false;
+    //}
+
+    // NOT NECESSARY since fixed nodes will never be placed.
+    //if(np->isFixed()) {
+    //    sm8log::warning("Cannot change location of fixed node: " + np->getName());
+    //    return false;
+    //}
 
     // check if there is enough space in this site, return false if not
-    if(used_resource_counts[resource_to_use] >= type->site_resource_counts[resource_to_use]) {
+    if(used_resource_counts[res_name] >= type->site_resource_counts[res_name]) {
         // site has max number of this type already assigned, throw warning
-        sm8log::warning("Site " + type->getName() + " (" + to_string(coord.first) + ", " + to_string(coord.second) + ")" 
-            + " cannot add another Node of type " + np->getType()->getName() + " to Resource " + resource_to_use
-            + "(used " + to_string(used_resource_counts[resource_to_use]) + " of " + to_string(type->getSiteResourceCounts()[resource_to_use]) + ")" 
-            );
-        return false;
-    }
-    //remove Node from old site
-    if(np->isFixed()) {
-        sm8log::warning("Cannot change location of fixed node: " + np->getName());
+        //sm8log::info("Site " + type->getName() + " (" + to_string(coord.first) + ", " + to_string(coord.second) + ")" 
+        //    + " cannot add another Node of type " + np->getType()->getName() + " to Resource " + re_names
+        //    + "(used " + to_string(used_resource_counts[res_name]) + " of " + to_string(type->getSiteResourceCounts()[res_name]) + ")" );
         return false;
     }
 
+    //remove Node from old site
     if(np->getSite() != NULL) {
         np->getSite()->removeNode(np);
     }
     
     //add Node to this site
     np->setSite(this);
-    np->setResourceNum(used_resource_counts[resource_to_use]++);
+    np->setResourceNum(used_resource_counts[res_name]++);
     np->setCoord(coord);
     placed_nodes.push_back(np);
     return true;
